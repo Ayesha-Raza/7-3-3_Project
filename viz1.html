@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+    <style type="text/css">
+        body {
+            font: 11px sans-serif;
+            background-color: #ffffff;
+        }
+        .legend {
+            position: absolute;
+            left: 20px;
+            top: 30px;
+        }
+        .axis text {
+            font: 10px sans-serif;
+        }
+        .axis line,
+        .axis path {
+            fill: none;
+            stroke: #000;
+            shape-rendering: crispEdges;
+        }
+        .tooltip {
+            font-family: "tangerine";
+            pointer-events:none;
+            position: absolute;
+            max-width: 8em;
+            text-align:center;
+            font-size: 20px;
+            background: lightblue;
+        }
+        svg {
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+path:hover {
+	fill-opacity: .6;
+}
+</style>
+    <h1 style="text-align:left; color:purple">
+        <bold>Number of Deaths from Heart Disease by U.S. State</bold>
+    </h1>
+    <br>
+    <br>
+    <div class="tooltip" class="hidden">
+        <p><span id="label"></span></p>
+    </div>
+    <script type="text/javascript">
+
+        createMap();
+
+      function createMap()
+      {
+        var margin = {
+            top: 5,
+            right: 5,
+            bottom: 5,
+            left: 5
+        },
+            width = 1060 - margin.left - margin.right,
+            height = 620 - margin.top - margin.bottom;
+        var low = '#ccccff'
+        var high = '#660066'
+        var projection = d3.geoAlbersUsa()
+            .translate([width / 2, height / 2])
+            .scale([1250]);
+
+        var path = d3.geoPath()
+            .projection(projection);
+        var tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        var svg = d3.select("body")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        d3.csv("https://raw.githubusercontent.com/Ayesha-Raza/7-3-3_Project/master/2016-HeartDiseaseDeaths.csv", function(data) {
+            var arr = [];
+            for (var d = 0; d < data.length; d++) {
+                arr.push(parseFloat(data[d].Deaths))
+            }
+            var min = d3.min(arr)
+            var max = d3.max(arr)
+            var ramp = d3.scaleLinear().domain([min, max]).range([low, high])
+
+            d3.json("https://raw.githubusercontent.com/Ayesha-Raza/7-3-3_Project/master/us_states.json", function(json) {
+                for (var i = 0; i < data.length; i++) {
+                    var state = data[i].State;
+                    var deaths = data[i].Deaths;
+                    for (var j = 0; j < json.features.length; j++) {
+                        var jsonState = json.features[j].properties.name;
+                        if (state == jsonState) {
+                            json.features[j].properties.Deaths = deaths;
+                            break;
+                        }
+                    }
+                }
+
+                svg.selectAll("path")
+                    .data(json.features)
+                    .enter()
+                    .append("path")
+                    .attr("d", path)
+                    .style("stroke", "#fff")
+                    .style("stroke-width", "1")
+                    .style("fill", function(d) {
+                    return ramp(d.properties.Deaths)
+                    })
+                    .on("mouseover", function(d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", .9);
+                    tooltip.html("<strong>" + d.properties.name  + "</strong>" + "<br/>" + "Deaths: " +(d.properties.Deaths))
+                            .style("left", (d3.event.pageX) + "px")
+                            .style("top", (d3.event.pageY) + "px");
+                    })
+                    .on("mouseout", function (d) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", 0);
+                });
+
+                svg.selectAll("text")
+                .data(json.features)
+                .enter()
+                .append("svg:text")
+                .text(function(d){return d.properties.abv})
+                .attr("x", function(d) {
+                  return path.centroid(d)[0];
+                })
+                .attr("y", function(d){
+                return  path.centroid(d)[1];
+                })
+                .attr('text-anchor','middle')
+                .attr('font-size','8pt')
+                .attr('font-weight','bold');
+
+                var w = 140,
+                    h = 300;
+                var key = d3.select("body")
+                    .append("svg")
+                    .attr("width", w)
+                    .attr("height", h)
+                    .attr("class", "legend");
+                var legend = key.append("defs")
+                    .append("svg:linearGradient")
+                    .attr("id", "gradient")
+                    .attr("x1", "100%")
+                    .attr("y1", "0%")
+                    .attr("x2", "100%")
+                    .attr("y2", "100%")
+                    .attr("spreadMethod", "pad");
+                legend.append("stop")
+                    .attr("offset", "0%")
+                    .attr("stop-color", high)
+                    .attr("stop-opacity", 1);
+                legend.append("stop")
+                    .attr("offset", "100%")
+                    .attr("stop-color", low)
+                    .attr("stop-opacity", 1);
+                key.append("rect")
+                    .attr("width", w - 100)
+                    .attr("height", h)
+                    .style("fill", "url(#gradient)")
+                    .attr("transform", "translate(0,10)");
+                var y = d3.scaleLinear()
+                    .range([h, 0])
+                    .domain([min, max]);
+                var yAxis = d3.axisRight(y);
+                key.append("g")
+                    .attr("class", "y axis")
+                    .attr("transform", "translate(41,10)")
+                    .call(yAxis)
+            });
+        });
+}
+
+
+</script>
+</head>
+<body>
+
+
+</body>
+</html>
